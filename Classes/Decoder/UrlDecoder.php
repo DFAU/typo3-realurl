@@ -460,7 +460,7 @@ class UrlDecoder extends EncodeDecoderBase {
 					$result->getPagePath() .
 					substr($this->speakingUri, $startPosition + strlen($this->expiredPath));
 				@ob_end_clean();
-				header('HTTP/1.1 302 TYPO3 RealURL redirect for expired page path');
+				header('HTTP/1.1 301 TYPO3 RealURL redirect for expired page path');
 				header('Location: ' . GeneralUtility::locationHeaderUrl($newUrl));
 				die;
 			}
@@ -912,12 +912,13 @@ class UrlDecoder extends EncodeDecoderBase {
 		$getVars = array();
 		if (count($urlParts) > 0) {
 			$putBack = TRUE;
+			$shouldExpire = (bool) $this->configuration->get('fileName/expireHTMLsuffix');
 			$fileNameSegment = array_pop($urlParts);
 			if ($fileNameSegment && strpos($fileNameSegment, '.') !== FALSE) {
 				if (!$this->handleFileNameMappingToGetVar($fileNameSegment, $getVars)) {
 					$validExtensions = array();
 
-					foreach (array('acceptHTMLsuffix', 'defaultToHTMLsuffixOnPrev') as $option) {
+					foreach (array('acceptHTMLsuffix', 'defaultToHTMLsuffixOnPrev', 'expireHTMLsuffix') as $option) {
 						$acceptSuffix = $this->configuration->get('fileName/' . $option);
 						if (is_string($acceptSuffix) && strpos($acceptSuffix, '.') !== FALSE) {
 							$validExtensions[] = $acceptSuffix;
@@ -937,6 +938,10 @@ class UrlDecoder extends EncodeDecoderBase {
 			}
 			if ($putBack) {
 				$urlParts[] = $fileNameSegment;
+				if ($shouldExpire) {
+					$this->isExpiredPath = TRUE;
+					$this->expiredPath = $this->originalPath;
+				}
 			}
 		}
 
