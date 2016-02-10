@@ -1,4 +1,5 @@
-;(function($) {
+define(['jquery'], function($) {
+
 	// Alias selector
 	$(document).ready(function() {
 		$('#realurlSelectedAlias').on('change', function() {
@@ -16,4 +17,4 @@
 		});
 		return false;
 	}
-})(jQuery);
+});

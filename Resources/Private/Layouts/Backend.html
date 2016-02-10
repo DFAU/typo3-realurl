@@ -1,11 +1,16 @@
 {namespace d=DmitryDulepov\Realurl\ViewHelpers}
 
 <f:be.container>
-	<f:be.pageRenderer includeCssFiles="{
-		1: '../typo3conf/ext/realurl/Resources/Public/realurl_be.css'
-	}" includeJsFiles="{
-		2: '../typo3conf/ext/realurl/Resources/Public/realurl_be.js'
-	}" loadJQuery="1"/>
+	<f:be.pageRenderer
+		loadJQuery="true"
+		jQueryNamespace="none"
+		includeCssFiles="{
+			0:'{f:uri.resource(path:\'Stylesheets\/Backend.css\')}'
+		}"
+		includeRequireJsModules="{
+			0:'TYPO3/CMS/Realurl/Backend'
+		}"
+		/>
 	<div class="typo3-fullDoc">
 		<div id="typo3-docheader">
 			<div class="typo3-docheader-functions">
