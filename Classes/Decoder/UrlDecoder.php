@@ -160,39 +160,49 @@ class UrlDecoder extends EncodeDecoderBase {
 	 * @return void
 	 */
 	protected function checkMissingSlash() {
-		$this->speakingUri = rtrim($this->speakingUri, '?');
+		$options = GeneralUtility::trimExplode(',', $this->configuration->get('init/appendMissingSlash'), true);
+		if ($this->appendSlashIfMissing($this->speakingUri) && count($options) > 0) {
+			foreach ($options as $option) {
+				$matches = array();
+				if (preg_match('/^redirect(\[(30[1237])\])?$/', $option, $matches)) {
+					$code = count($matches) > 1 ? $matches[2] : 301;
+					$status = 'HTTP/1.1 ' . $code . ' TYPO3 RealURL redirect for missing slash';
 
-		$regexp = '~^([^\?]*[^/])(\?.*)?$~';
-		if (preg_match($regexp, $this->speakingUri)) { // Only process if a slash is missing:
-			$options = GeneralUtility::trimExplode(',', $this->configuration->get('init/appendMissingSlash'), true);
-			if (in_array('ifNotFile', $options)) {
-				if (!preg_match('/\/[^\/\?]+\.[^\/]+(\?.*)?$/', '/' . $this->speakingUri)) {
-					$this->speakingUri = preg_replace($regexp, '\1/\2', $this->speakingUri);
-					$this->appendedSlash = true;
-				}
-			} else {
-				$this->speakingUri = preg_replace($regexp, '\1/\2', $this->speakingUri);
-				$this->appendedSlash = true;
-			}
-			if ($this->appendedSlash && count($options) > 0) {
-				foreach ($options as $option) {
-					$matches = array();
-					if (preg_match('/^redirect(\[(30[1237])\])?$/', $option, $matches)) {
-						$code = count($matches) > 1 ? $matches[2] : 301;
-						$status = 'HTTP/1.1 ' . $code . ' TYPO3 RealURL redirect for missing slash';
-
-						// Check path segment to be relative for the current site.
-						// parse_url() does not work with relative URLs, so we use it to test
-						if (!@parse_url($this->speakingUri, PHP_URL_HOST)) {
-							@ob_end_clean();
-							header($status);
-							header('Location: ' . GeneralUtility::locationHeaderUrl($this->speakingUri));
-							exit;
-						}
+					// Check path segment to be relative for the current site.
+					// parse_url() does not work with relative URLs, so we use it to test
+					if (!@parse_url($this->speakingUri, PHP_URL_HOST)) {
+						@ob_end_clean();
+						header($status);
+						header('Location: ' . GeneralUtility::locationHeaderUrl($this->speakingUri));
+						exit;
 					}
 				}
 			}
 		}
+	}
+
+	/**
+	 * Checks if the missing slash should be corrected.
+	 *
+	 * @return bool
+	 */
+	protected function appendSlashIfMissing(&$speakingUri) {
+		$speakingUri = rtrim($speakingUri, '?');
+		$regexp = '~^([^\?]*[^/])(\?.*)?$~';
+		$appendSlash = false;
+		if (preg_match($regexp, $speakingUri)) { // Only process if a slash is missing:
+			$options = GeneralUtility::trimExplode(',', $this->configuration->get('init/appendMissingSlash'), true);
+			if (in_array('ifNotFile', $options)) {
+				if (!preg_match('/\/[^\/\?]+\.[^\/]+(\?.*)?$/', '/' . $speakingUri)) {
+					$speakingUri = preg_replace($regexp, '\1/\2', $speakingUri);
+					$appendSlash = true;
+				}
+			} else {
+				$speakingUri = preg_replace($regexp, '\1/\2', $speakingUri);
+				$appendSlash = true;
+			}
+		}
+		return $appendSlash;
 	}
 
 	/**
@@ -459,6 +469,7 @@ class UrlDecoder extends EncodeDecoderBase {
 				$newUrl = substr($this->speakingUri, 0, $startPosition) .
 					$result->getPagePath() .
 					substr($this->speakingUri, $startPosition + strlen($this->expiredPath));
+				$this->appendSlashIfMissing($newUrl);
 				@ob_end_clean();
 				header('HTTP/1.1 301 TYPO3 RealURL redirect for expired page path');
 				header('Location: ' . GeneralUtility::locationHeaderUrl($newUrl));
@@ -938,7 +949,8 @@ class UrlDecoder extends EncodeDecoderBase {
 			}
 			if ($putBack) {
 				$urlParts[] = $fileNameSegment;
-				if ($shouldExpire) {
+				$currentPath = implode('/', $urlParts);
+				if ($shouldExpire && $currentPath !== rtrim($this->originalPath, '/?')) {
 					$this->isExpiredPath = TRUE;
 					$this->expiredPath = $this->originalPath;
 				}
