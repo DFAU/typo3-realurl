@@ -144,7 +144,7 @@ class DataHandler {
 	protected function expireCachesForPageAndSubpages($pageId, $languageId) {
 		$this->cache->expirePathCache($pageId, $languageId);
 		$this->cache->clearUrlCacheForPage($pageId);
-		$subpages = BackendUtility::getRecordsByField('pages', 'pid', $pageId);
+		$subpages = BackendUtility::getRecordsByField('pages', 'pid', $pageId) ?: [];
 		$uidList = array();
 		foreach ($subpages as $subpage) {
 			$uidList[] = (int)$subpage['uid'];
